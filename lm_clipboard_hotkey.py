@@ -1,30 +1,5 @@
 #!/usr/bin/env python3
-"""
-lm_clipboard_hotkey.py — Interacts with LM Studio through a keyboard shortcut.
-
-What's new in v1.3
-==================
-✔︎ **System prompt** via `-s/--system-prompt` or `-f/--system-prompt-file` (unchanged).
-✔︎ **Auto-load**: if the model isn't loaded, the script can:
-     • attempt a JIT load (warm-up request)
-     • or call `lms load` (CLI) when available.
-
-Quick start
------------
-```bash
-# Inline system prompt + auto-load (default)
-python lm_clipboard_hotkey.py -s "Always answer in French."
-
-# Specify the loading strategy
-python lm_clipboard_hotkey.py --load-strategy jit        # (default)
-python lm_clipboard_hotkey.py --load-strategy cli        # uses lms.exe
-python lm_clipboard_hotkey.py --load-strategy off        # do nothing
-```
-
-Dependencies:
-    pip install requests pyperclip keyboard colorama
-    # and install the CLI: https://lmstudio.ai/docs/cli
-"""
+"""Send clipboard content to LM Studio when a hotkey is pressed."""
 from __future__ import annotations
 
 import argparse
