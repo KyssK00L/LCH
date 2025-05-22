@@ -126,7 +126,7 @@ def query_lm(prompt: str, system_prompt: str | None = None) -> str:
 
 # -------------------- Hotkey -------------------- #
 
-def handle_hotkey(system_prompt: str, load_strategy: str) -> None:
+def handle_hotkey(system_prompt: str, load_strategy: str, auto_paste: bool) -> None:
     prompt = pyperclip.paste()
     if not prompt.strip():
         debug("[INFO] Clipboard empty.", color="yellow")
@@ -140,6 +140,8 @@ def handle_hotkey(system_prompt: str, load_strategy: str) -> None:
     if answer:
         pyperclip.copy(answer)
         debug("[OK] Answer copied ✔\n", color="green")
+        if auto_paste:
+            keyboard.press_and_release("ctrl+v")
     else:
         debug("[KO] No answer.\n", color="red")
 
@@ -153,6 +155,12 @@ def main() -> None:
         choices=["jit", "cli", "off"],
         default="jit",
         help="Strategy to auto-load the model if missing.",
+    )
+
+    parser.add_argument(
+        "--auto-paste",
+        action="store_true",
+        help="Paste the answer with Ctrl+V after copying.",
     )
 
     args = parser.parse_args()
@@ -201,7 +209,7 @@ def main() -> None:
             keys,
             lambda sp=system_prompt: threading.Thread(
                 target=handle_hotkey,
-                args=(sp, args.load_strategy),
+                args=(sp, args.load_strategy, args.auto_paste),
                 daemon=True,
             ).start(),
         )
