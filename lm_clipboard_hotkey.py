@@ -16,6 +16,7 @@ import requests  # HTTP
 from colorama import Fore, Style  # Console colors
 
 CONFIG_FILE: Final[Path] = Path(__file__).with_name("config.json")
+EXAMPLE_FILE: Final[Path] = Path(__file__).with_name("config.example.json")
 TIMEOUT: Final[int] = 120  # s
 
 # -------------------- Utils -------------------- #
@@ -23,6 +24,16 @@ TIMEOUT: Final[int] = 120  # s
 def debug(msg: str, *, color: str = "") -> None:
     col = getattr(Fore, color.upper(), "")
     print(f"{col}{msg}{Style.RESET_ALL}")
+
+
+def ensure_config() -> None:
+    """Create CONFIG_FILE from EXAMPLE_FILE if it doesn't exist."""
+    if not CONFIG_FILE.exists() and EXAMPLE_FILE.exists():
+        try:
+            CONFIG_FILE.write_text(EXAMPLE_FILE.read_text(encoding="utf-8"), encoding="utf-8")
+            debug(f"[INFO] Created {CONFIG_FILE.name} from example.", color="cyan")
+        except Exception as exc:
+            debug(f"[ERROR] Unable to create {CONFIG_FILE}: {exc}", color="red")
 
 
 def load_config(path: Path) -> dict:
@@ -165,6 +176,7 @@ def main() -> None:
 
     args = parser.parse_args()
 
+    ensure_config()
     config = load_config(CONFIG_FILE)
 
     env_host = os.getenv("LM_STUDIO_HOST")

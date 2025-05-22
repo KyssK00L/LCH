@@ -29,3 +29,9 @@ python lm_clipboard_hotkey.py --auto-paste              # send Ctrl+V
 pip install requests pyperclip keyboard colorama
 # install the CLI: https://lmstudio.ai/docs/cli
 ```
+
+### Configuration
+
+Copy `config.example.json` to `config.json` and edit the values
+to suit your environment. The `config.json` file is ignored by Git so
+that your personal settings are preserved on updates.
