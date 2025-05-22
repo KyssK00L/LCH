@@ -29,9 +29,7 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import subprocess
-import sys
 import threading
 from pathlib import Path
 from typing import Final, List
@@ -41,16 +39,25 @@ import pyperclip  # Clipboard
 import requests  # HTTP
 from colorama import Fore, Style  # Console colors
 
-LM_STUDIO_HOST: Final[str] = "http://10.0.0.211:1234"
-MODEL_NAME: Final[str] = "qwen3b-30b-a3b"
+CONFIG_FILE: Final[Path] = Path(__file__).with_name("config.json")
+LM_STUDIO_HOST: str = "http://127.0.0.1:1234"
+MODEL_NAME: str = "model"
 TIMEOUT: Final[int] = 120  # s
-HOTKEY: Final[str] = "ctrl+shift+1"
 
 # -------------------- Utils -------------------- #
 
 def debug(msg: str, *, color: str = "") -> None:
     col = getattr(Fore, color.upper(), "")
     print(f"{col}{msg}{Style.RESET_ALL}")
+
+
+def load_config(path: Path) -> dict:
+    try:
+        with path.open(encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as exc:
+        debug(f"[ERREUR] Chargement de {path}: {exc}", color="red")
+        return {}
 
 # -------------------- Model loading -------------------- #
 
@@ -164,25 +171,8 @@ def handle_hotkey(system_prompt: str, load_strategy: str) -> None:
 
 # -------------------- Main -------------------- #
 
-def load_system_prompt(args: argparse.Namespace) -> str:
-    if args.system_prompt_file:
-        path = Path(args.system_prompt_file).expanduser().resolve()
-        try:
-            return path.read_text(encoding="utf-8").strip()
-        except Exception as exc:
-            debug(f"[ERREUR] Lecture du fichier {path}: {exc}", color="red")
-            return ""
-    if args.system_prompt:
-        return args.system_prompt.strip()
-    return os.getenv("LM_SYSTEM_PROMPT", "").strip()
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description="Hotkey → LM Studio", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument("-s", "--system-prompt", help="Prompt système inline.")
-    group.add_argument("-f", "--system-prompt-file", help="Fichier texte contenant le prompt système.")
 
     parser.add_argument(
         "--load-strategy",
@@ -192,15 +182,46 @@ def main() -> None:
     )
 
     args = parser.parse_args()
-    system_prompt = load_system_prompt(args)
 
-    if system_prompt:
-        preview = (system_prompt[:60] + "…") if len(system_prompt) > 60 else system_prompt
-        debug(f"[CONFIG] Prompt système : {preview!r}\n", color="blue")
+    config = load_config(CONFIG_FILE)
+
+    host = config.get("host", "127.0.0.1")
+    port = config.get("port", 1234)
+    model = config.get("model", "model")
+
+    global LM_STUDIO_HOST, MODEL_NAME
+    LM_STUDIO_HOST = f"http://{host}:{port}"
+    MODEL_NAME = model
+
+    debug(f"[CONFIG] Host : {LM_STUDIO_HOST}", color="blue")
+    debug(f"[CONFIG] Modèle : {MODEL_NAME}\n", color="blue")
+
+    hotkeys = config.get("hotkeys", [])
+    if not hotkeys:
+        debug("[WARN] Aucune hotkey définie.", color="yellow")
+    for hk in hotkeys[:5]:
+        keys = hk.get("keys")
+        prompt_file = hk.get("prompt_file")
+        if not keys or not prompt_file:
+            continue
+        try:
+            system_prompt = Path(prompt_file).expanduser().read_text(encoding="utf-8").strip()
+            preview = (system_prompt[:60] + "…") if len(system_prompt) > 60 else system_prompt
+            debug(f"[CONFIG] {keys} → {prompt_file} : {preview!r}", color="blue")
+        except Exception as exc:
+            debug(f"[ERREUR] Lecture de {prompt_file}: {exc}", color="red")
+            continue
+
+        keyboard.add_hotkey(
+            keys,
+            lambda sp=system_prompt: threading.Thread(
+                target=handle_hotkey,
+                args=(sp, args.load_strategy),
+                daemon=True,
+            ).start(),
+        )
 
     debug("LM Studio Hotkey actif ! (Ctrl+C pour quitter)\n", color="magenta")
-
-    keyboard.add_hotkey(HOTKEY, lambda: threading.Thread(target=handle_hotkey, args=(system_prompt, args.load_strategy), daemon=True).start())
 
     try:
         keyboard.wait()

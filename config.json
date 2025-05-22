@@ -1,0 +1,9 @@
+{
+    "host": "127.0.0.1",
+    "port": 1234,
+    "model": "qwen3b-30b-a3b",
+    "hotkeys": [
+        {"keys": "ctrl+shift+1", "prompt_file": "prompts/default.txt"},
+        {"keys": "ctrl+shift+2", "prompt_file": "prompts/french.txt"}
+    ]
+}
