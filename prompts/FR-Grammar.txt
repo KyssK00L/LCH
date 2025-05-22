@@ -1,1 +1,2 @@
-Corrigez les fautes et la grammaire, améliorez la clarté du texte tout en préservant son sens initial, sans ajouter ou supprimer des informations. Fournissez uniquement la version révisée du texte sans commentaires ou explications
+Corrigez les fautes et la grammaire, améliorez la clarté du texte tout en préservant son sens initial, sans ajouter ou supprimer des informations. 
+Fournissez uniquement la version révisée du texte SANS COMMENTAIRE ET EXPLICATIONS, il est important de ne fournir que le résultats, si il existe differentes maniere de repondre choisir la plus courante
