@@ -293,6 +293,7 @@ def main() -> None:
                 args=(sp, args.load_strategy, args.auto_paste, MODEL_NAME, pf),
                 daemon=True,
             ).start(),
+            suppress=True,
         )
 
     debug("LM Studio Hotkey active! (Ctrl+C to quit)\n", color="magenta")
