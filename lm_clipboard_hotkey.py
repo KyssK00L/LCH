@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 lm_clipboard_hotkey.py — Interagit avec LM Studio via un raccourci clavier.
 
