@@ -269,14 +269,10 @@ def main() -> None:
     debug(f"[CONFIG] Host: {LM_STUDIO_HOST}", color="blue")
     debug(f"[CONFIG] Model: {MODEL_NAME}\n", color="blue")
 
-    hotkeys = config.get("hotkeys")
+    hotkeys = config.get("hotkeys") or []
     if not hotkeys:
-        env_hotkey = os.getenv("HOTKEY")
-        if env_hotkey:
-            hotkeys = [{"keys": env_hotkey, "prompt_file": "prompts/default.txt"}]
-        else:
-            hotkeys = [{"keys": "ctrl+shift+1", "prompt_file": "prompts/default.txt"}]
-        debug("[INFO] Default hotkeys loaded.", color="yellow")
+        debug("[ERROR] No hotkeys defined in config.json", color="red")
+        return
     for hk in hotkeys[:5]:
         keys = hk.get("keys")
         prompt_file = hk.get("prompt_file")
