@@ -7,6 +7,7 @@ import json
 import os
 import subprocess
 import threading
+import time
 from pathlib import Path
 from typing import Final, List
 
@@ -15,9 +16,12 @@ import pyperclip  # Clipboard
 import requests  # HTTP
 from colorama import Fore, Style  # Console colors
 
+from settings import JIT_LOADING_TIMEOUT
+
 CONFIG_FILE: Final[Path] = Path(__file__).with_name("config.json")
 EXAMPLE_FILE: Final[Path] = Path(__file__).with_name("config.example.json")
 TIMEOUT: Final[int] = 120  # s
+JIT_TIMEOUT: Final[int] = JIT_LOADING_TIMEOUT
 
 # -------------------- Utils -------------------- #
 
@@ -57,6 +61,24 @@ def is_model_loaded() -> bool:
     except Exception as exc:
         debug(f"[WARN] Unable to check loaded models: {exc}", color="yellow")
         return False
+
+
+class ModelNotLoadedError(Exception):
+    pass
+
+
+def get_model_state(model_id: str) -> str:
+    """Return the state of *model_id* via /api/v0/models."""
+    try:
+        r = requests.get(f"{LM_STUDIO_HOST}/api/v0/models", timeout=10)
+        r.raise_for_status()
+        for m in r.json():
+            mid = m.get("id") or m.get("modelId")
+            if model_id in (mid, m.get("name")):
+                return m.get("state", "unknown")
+    except Exception as exc:
+        debug(f"[WARN] Checking model state failed: {exc}", color="yellow")
+    return "unknown"
 
 
 def jit_load_model(system_prompt: str | None = None) -> bool:
@@ -115,29 +137,64 @@ def ensure_model_loaded(strategy: str, system_prompt: str | None = None) -> None
 
 # -------------------- Inference -------------------- #
 
-def query_lm(prompt: str, system_prompt: str | None = None) -> str:
+def _call_chat(payload: dict) -> dict:
     headers = {"Content-Type": "application/json"}
+    response = requests.post(
+        f"{LM_STUDIO_HOST}/v1/chat/completions",
+        headers=headers,
+        json=payload,
+        timeout=TIMEOUT,
+    )
+    if response.status_code == 404 and (
+        "No models loaded" in response.text
+        or "Model not found" in response.text
+    ):
+        raise ModelNotLoadedError(response.text)
+    response.raise_for_status()
+    return response.json()
+
+
+def query_lm(
+    prompt: str,
+    system_prompt: str | None = None,
+    *,
+    model_id: str | None = None,
+) -> str:
+    model_id = model_id or MODEL_NAME
     messages: list[dict[str, str]] = []
     if system_prompt:
         messages.append({"role": "system", "content": system_prompt})
     messages.append({"role": "user", "content": prompt})
-    payload = {
-        "model": MODEL_NAME,
-        "messages": messages,
-        "stream": False,
-    }
-    try:
-        response = requests.post(f"{LM_STUDIO_HOST}/v1/chat/completions", headers=headers, json=payload, timeout=TIMEOUT)
-        response.raise_for_status()
-        data = response.json()
-        return data["choices"][0]["message"]["content"].strip()
-    except Exception as exc:
-        debug(f"[ERROR] LM Studio request failed: {exc}", color="red")
-        return ""
+    payload = {"model": model_id, "messages": messages, "stream": False}
+
+    deadline = time.monotonic() + JIT_TIMEOUT
+    backoff = 1
+
+    while True:
+        try:
+            data = _call_chat(payload)
+            return data["choices"][0]["message"]["content"].strip()
+        except ModelNotLoadedError:
+            state = get_model_state(model_id)
+            if state == "not-loaded" and time.monotonic() < deadline:
+                debug(f"[INFO] Waiting for {model_id} to load…", color="cyan")
+                time.sleep(backoff)
+                backoff = min(backoff * 2, 8)
+                continue
+            if state == "not-loaded":
+                debug("[ERROR] Loading model timed out", color="red")
+                break
+            if state == "unknown":
+                debug(f"[ERROR] Model {model_id} not found", color="red")
+                break
+        except Exception as exc:
+            debug(f"[ERROR] LM Studio request failed: {exc}", color="red")
+            break
+    return ""
 
 # -------------------- Hotkey -------------------- #
 
-def handle_hotkey(system_prompt: str, load_strategy: str, auto_paste: bool) -> None:
+def handle_hotkey(system_prompt: str, load_strategy: str, auto_paste: bool, model_id: str) -> None:
     prompt = pyperclip.paste()
     if not prompt.strip():
         debug("[INFO] Clipboard empty.", color="yellow")
@@ -146,7 +203,7 @@ def handle_hotkey(system_prompt: str, load_strategy: str, auto_paste: bool) -> N
     ensure_model_loaded(load_strategy, system_prompt)
 
     debug("[INFO] Sending to LM Studio…", color="cyan")
-    answer = query_lm(prompt, system_prompt)
+    answer = query_lm(prompt, system_prompt, model_id=model_id)
 
     if answer:
         pyperclip.copy(answer)
@@ -174,6 +231,11 @@ def main() -> None:
         help="Paste the answer with Ctrl+V after copying.",
     )
 
+    parser.add_argument(
+        "--model-id",
+        help="Override the model identifier",
+    )
+
     args = parser.parse_args()
 
     ensure_config()
@@ -188,6 +250,8 @@ def main() -> None:
         lm_host = f"http://{host}:{port}"
 
     model = os.getenv("MODEL_NAME", config.get("model", "model"))
+    if args.model_id:
+        model = args.model_id
 
     global LM_STUDIO_HOST, MODEL_NAME
     LM_STUDIO_HOST = lm_host
@@ -221,7 +285,7 @@ def main() -> None:
             keys,
             lambda sp=system_prompt: threading.Thread(
                 target=handle_hotkey,
-                args=(sp, args.load_strategy, args.auto_paste),
+                args=(sp, args.load_strategy, args.auto_paste, MODEL_NAME),
                 daemon=True,
             ).start(),
         )
