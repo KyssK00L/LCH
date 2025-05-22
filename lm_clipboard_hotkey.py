@@ -194,7 +194,13 @@ def query_lm(
 
 # -------------------- Hotkey -------------------- #
 
-def handle_hotkey(system_prompt: str, load_strategy: str, auto_paste: bool, model_id: str) -> None:
+def handle_hotkey(
+    system_prompt: str,
+    load_strategy: str,
+    auto_paste: bool,
+    model_id: str,
+    prompt_file: str | None = None,
+) -> None:
     prompt = pyperclip.paste()
     if not prompt.strip():
         debug("[INFO] Clipboard empty.", color="yellow")
@@ -202,7 +208,10 @@ def handle_hotkey(system_prompt: str, load_strategy: str, auto_paste: bool, mode
 
     ensure_model_loaded(load_strategy, system_prompt)
 
-    debug("[INFO] Sending to LM Studio…", color="cyan")
+    if prompt_file:
+        debug(f"[INFO] Sending to LM Studio ({prompt_file})…", color="cyan")
+    else:
+        debug("[INFO] Sending to LM Studio…", color="cyan")
     answer = query_lm(prompt, system_prompt, model_id=model_id)
 
     if answer:
@@ -283,9 +292,9 @@ def main() -> None:
 
         keyboard.add_hotkey(
             keys,
-            lambda sp=system_prompt: threading.Thread(
+            lambda sp=system_prompt, pf=prompt_file: threading.Thread(
                 target=handle_hotkey,
-                args=(sp, args.load_strategy, args.auto_paste, MODEL_NAME),
+                args=(sp, args.load_strategy, args.auto_paste, MODEL_NAME, pf),
                 daemon=True,
             ).start(),
         )
