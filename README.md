@@ -3,7 +3,7 @@
 `lm_clipboard_hotkey.py` interacts with LM Studio via a keyboard shortcut and
 copies the answer back to your clipboard.
 
-## What's new in v1.3
+## What's new 
 
 - **System prompt** via `-s/--system-prompt` or `-f/--system-prompt-file`.
 - **Auto-load**: if the model isn't loaded, the script can attempt a JIT warm-up
