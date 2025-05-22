@@ -30,7 +30,7 @@ def load_config(path: Path) -> dict:
         with path.open(encoding="utf-8") as f:
             return json.load(f)
     except Exception as exc:
-        debug(f"[ERREUR] Chargement de {path}: {exc}", color="red")
+        debug(f"[ERROR] Loading {path}: {exc}", color="red")
         return {}
 
 # -------------------- Model loading -------------------- #
@@ -44,13 +44,13 @@ def is_model_loaded() -> bool:
         models: List[str] = [m["id"] if isinstance(m, dict) else m for m in data.get("data", [])]
         return any(MODEL_NAME in mid for mid in models)
     except Exception as exc:
-        debug(f"[WARN] Impossible de vérifier les modèles chargés: {exc}", color="yellow")
+        debug(f"[WARN] Unable to check loaded models: {exc}", color="yellow")
         return False
 
 
 def jit_load_model(system_prompt: str | None = None) -> bool:
     """Force a JIT load by sending a dummy request with TTL."""
-    debug("[INFO] Tentative de JIT load…", color="cyan")
+    debug("[INFO] Trying JIT load…", color="cyan")
     dummy_user = "(warm‑up)"
     headers = {"Content-Type": "application/json"}
     messages = []
@@ -68,13 +68,13 @@ def jit_load_model(system_prompt: str | None = None) -> bool:
         requests.post(f"{LM_STUDIO_HOST}/v1/chat/completions", json=payload, timeout=TIMEOUT)
         return is_model_loaded()
     except Exception as exc:
-        debug(f"[ERREUR] JIT load a échoué: {exc}", color="red")
+        debug(f"[ERROR] JIT load failed: {exc}", color="red")
         return False
 
 
 def cli_load_model() -> bool:
     """Try `lms load MODEL_NAME` via the CLI."""
-    debug("[INFO] Tentative de chargement via lms CLI…", color="cyan")
+    debug("[INFO] Trying to load via lms CLI…", color="cyan")
     try:
         completed = subprocess.run([
             "lms", "load", MODEL_NAME, "-y"
@@ -83,7 +83,7 @@ def cli_load_model() -> bool:
             return True
         debug(completed.stderr or completed.stdout, color="yellow")
     except FileNotFoundError:
-        debug("[WARN] lms.exe non trouvé dans PATH.", color="yellow")
+        debug("[WARN] lms.exe not found in PATH.", color="yellow")
     return False
 
 
@@ -92,7 +92,7 @@ def ensure_model_loaded(strategy: str, system_prompt: str | None = None) -> None
     if is_model_loaded():
         return
     if strategy == "off":
-        debug("[INFO] Modèle non chargé et stratégie=off — on continue.", color="yellow")
+        debug("[INFO] Model not loaded and strategy=off — continuing.", color="yellow")
         return
     loaded = False
     if strategy == "jit":
@@ -100,7 +100,7 @@ def ensure_model_loaded(strategy: str, system_prompt: str | None = None) -> None
     elif strategy == "cli":
         loaded = cli_load_model()
     if not loaded:
-        debug("[ERREUR] Impossible de charger le modèle automatiquement.", color="red")
+        debug("[ERROR] Could not load the model automatically.", color="red")
 
 # -------------------- Inference -------------------- #
 
@@ -121,7 +121,7 @@ def query_lm(prompt: str, system_prompt: str | None = None) -> str:
         data = response.json()
         return data["choices"][0]["message"]["content"].strip()
     except Exception as exc:
-        debug(f"[ERREUR] Requête LM Studio: {exc}", color="red")
+        debug(f"[ERROR] LM Studio request failed: {exc}", color="red")
         return ""
 
 # -------------------- Hotkey -------------------- #
@@ -129,19 +129,19 @@ def query_lm(prompt: str, system_prompt: str | None = None) -> str:
 def handle_hotkey(system_prompt: str, load_strategy: str) -> None:
     prompt = pyperclip.paste()
     if not prompt.strip():
-        debug("[INFO] Presse‑papier vide.", color="yellow")
+        debug("[INFO] Clipboard empty.", color="yellow")
         return
 
     ensure_model_loaded(load_strategy, system_prompt)
 
-    debug("[INFO] Envoi à LM Studio…", color="cyan")
+    debug("[INFO] Sending to LM Studio…", color="cyan")
     answer = query_lm(prompt, system_prompt)
 
     if answer:
         pyperclip.copy(answer)
-        debug("[OK] Réponse copiée ✔\n", color="green")
+        debug("[OK] Answer copied ✔\n", color="green")
     else:
-        debug("[KO] Aucune réponse.\n", color="red")
+        debug("[KO] No answer.\n", color="red")
 
 # -------------------- Main -------------------- #
 
@@ -152,7 +152,7 @@ def main() -> None:
         "--load-strategy",
         choices=["jit", "cli", "off"],
         default="jit",
-        help="Stratégie de chargement automatique du modèle si absent.",
+        help="Strategy to auto-load the model if missing.",
     )
 
     args = parser.parse_args()
@@ -173,8 +173,8 @@ def main() -> None:
     LM_STUDIO_HOST = lm_host
     MODEL_NAME = model
 
-    debug(f"[CONFIG] Host : {LM_STUDIO_HOST}", color="blue")
-    debug(f"[CONFIG] Modèle : {MODEL_NAME}\n", color="blue")
+    debug(f"[CONFIG] Host: {LM_STUDIO_HOST}", color="blue")
+    debug(f"[CONFIG] Model: {MODEL_NAME}\n", color="blue")
 
     hotkeys = config.get("hotkeys")
     if not hotkeys:
@@ -183,7 +183,7 @@ def main() -> None:
             hotkeys = [{"keys": env_hotkey, "prompt_file": "prompts/default.txt"}]
         else:
             hotkeys = [{"keys": "ctrl+shift+1", "prompt_file": "prompts/default.txt"}]
-        debug("[INFO] Hotkeys par défaut chargées.", color="yellow")
+        debug("[INFO] Default hotkeys loaded.", color="yellow")
     for hk in hotkeys[:5]:
         keys = hk.get("keys")
         prompt_file = hk.get("prompt_file")
@@ -194,7 +194,7 @@ def main() -> None:
             preview = (system_prompt[:60] + "…") if len(system_prompt) > 60 else system_prompt
             debug(f"[CONFIG] {keys} → {prompt_file} : {preview!r}", color="blue")
         except Exception as exc:
-            debug(f"[ERREUR] Lecture de {prompt_file}: {exc}", color="red")
+            debug(f"[ERROR] Reading {prompt_file}: {exc}", color="red")
             continue
 
         keyboard.add_hotkey(
@@ -206,12 +206,12 @@ def main() -> None:
             ).start(),
         )
 
-    debug("LM Studio Hotkey actif ! (Ctrl+C pour quitter)\n", color="magenta")
+    debug("LM Studio Hotkey active! (Ctrl+C to quit)\n", color="magenta")
 
     try:
         keyboard.wait()
     except KeyboardInterrupt:
-        debug("Arrêt du script…", color="cyan")
+        debug("Stopping script…", color="cyan")
 
 
 if __name__ == "__main__":
