@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import threading
 from pathlib import Path
@@ -40,8 +41,6 @@ import requests  # HTTP
 from colorama import Fore, Style  # Console colors
 
 CONFIG_FILE: Final[Path] = Path(__file__).with_name("config.json")
-LM_STUDIO_HOST: str = "http://127.0.0.1:1234"
-MODEL_NAME: str = "model"
 TIMEOUT: Final[int] = 120  # s
 
 # -------------------- Utils -------------------- #
@@ -185,20 +184,31 @@ def main() -> None:
 
     config = load_config(CONFIG_FILE)
 
-    host = config.get("host", "127.0.0.1")
-    port = config.get("port", 1234)
-    model = config.get("model", "model")
+    env_host = os.getenv("LM_STUDIO_HOST")
+    if env_host:
+        lm_host = env_host
+    else:
+        host = config.get("host", "127.0.0.1")
+        port = config.get("port", 1234)
+        lm_host = f"http://{host}:{port}"
+
+    model = os.getenv("MODEL_NAME", config.get("model", "model"))
 
     global LM_STUDIO_HOST, MODEL_NAME
-    LM_STUDIO_HOST = f"http://{host}:{port}"
+    LM_STUDIO_HOST = lm_host
     MODEL_NAME = model
 
     debug(f"[CONFIG] Host : {LM_STUDIO_HOST}", color="blue")
     debug(f"[CONFIG] Modèle : {MODEL_NAME}\n", color="blue")
 
-    hotkeys = config.get("hotkeys", [])
+    hotkeys = config.get("hotkeys")
     if not hotkeys:
-        debug("[WARN] Aucune hotkey définie.", color="yellow")
+        env_hotkey = os.getenv("HOTKEY")
+        if env_hotkey:
+            hotkeys = [{"keys": env_hotkey, "prompt_file": "prompts/default.txt"}]
+        else:
+            hotkeys = [{"keys": "ctrl+shift+1", "prompt_file": "prompts/default.txt"}]
+        debug("[INFO] Hotkeys par défaut chargées.", color="yellow")
     for hk in hotkeys[:5]:
         keys = hk.get("keys")
         prompt_file = hk.get("prompt_file")
