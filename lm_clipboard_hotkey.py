@@ -1,29 +1,29 @@
 #!/usr/bin/env python3
 """
-lm_clipboard_hotkey.py — Interagit avec LM Studio via un raccourci clavier.
+lm_clipboard_hotkey.py — Interacts with LM Studio through a keyboard shortcut.
 
-Nouveautés v1.3
-===============
-✔︎ **Prompt système** via `-s/--system-prompt` ou `-f/--system-prompt-file` (inchangé).
-✔︎ **Auto‑load** : si le modèle n’est pas chargé, le script peut :
-     • tenter un JIT‑load (requête d’amorçage)
-     • ou invoquer `lms load` (CLI) quand disponible.
+What's new in v1.3
+==================
+✔︎ **System prompt** via `-s/--system-prompt` or `-f/--system-prompt-file` (unchanged).
+✔︎ **Auto-load**: if the model isn't loaded, the script can:
+     • attempt a JIT load (warm-up request)
+     • or call `lms load` (CLI) when available.
 
-Usage rapide
-------------
+Quick start
+-----------
 ```bash
-# Prompt système inline + auto‑load (défaut)
-python lm_clipboard_hotkey.py -s "Réponds toujours en français."
+# Inline system prompt + auto-load (default)
+python lm_clipboard_hotkey.py -s "Always answer in French."
 
-# Spécifier la stratégie de chargement
-python lm_clipboard_hotkey.py --load-strategy jit        # (par défaut)
-python lm_clipboard_hotkey.py --load-strategy cli        # utilise lms.exe
-python lm_clipboard_hotkey.py --load-strategy off        # ne tente rien
+# Specify the loading strategy
+python lm_clipboard_hotkey.py --load-strategy jit        # (default)
+python lm_clipboard_hotkey.py --load-strategy cli        # uses lms.exe
+python lm_clipboard_hotkey.py --load-strategy off        # do nothing
 ```
 
-Dépendances :
+Dependencies:
     pip install requests pyperclip keyboard colorama
-    # et installer le CLI : https://lmstudio.ai/docs/cli
+    # and install the CLI: https://lmstudio.ai/docs/cli
 """
 from __future__ import annotations
 
@@ -36,10 +36,10 @@ import threading
 from pathlib import Path
 from typing import Final, List
 
-import keyboard  # Gère les raccourcis clavier
-import pyperclip  # Presse-papier
+import keyboard  # Handles keyboard shortcuts
+import pyperclip  # Clipboard
 import requests  # HTTP
-from colorama import Fore, Style  # Couleurs console
+from colorama import Fore, Style  # Console colors
 
 LM_STUDIO_HOST: Final[str] = "http://10.0.0.211:1234"
 MODEL_NAME: Final[str] = "qwen3b-30b-a3b"
@@ -52,10 +52,10 @@ def debug(msg: str, *, color: str = "") -> None:
     col = getattr(Fore, color.upper(), "")
     print(f"{col}{msg}{Style.RESET_ALL}")
 
-# -------------------- Chargement modèle -------------------- #
+# -------------------- Model loading -------------------- #
 
 def is_model_loaded() -> bool:
-    """Retourne True si MODEL_NAME est déjà chargé (en fonction de JIT)."""
+    """Return True if MODEL_NAME is already loaded (depends on JIT)."""
     try:
         r = requests.get(f"{LM_STUDIO_HOST}/v1/models", timeout=10)
         r.raise_for_status()
@@ -68,7 +68,7 @@ def is_model_loaded() -> bool:
 
 
 def jit_load_model(system_prompt: str | None = None) -> bool:
-    """Force un JIT load en envoyant une requête bidon avec TTL."""
+    """Force a JIT load by sending a dummy request with TTL."""
     debug("[INFO] Tentative de JIT load…", color="cyan")
     dummy_user = "(warm‑up)"
     headers = {"Content-Type": "application/json"}
@@ -81,7 +81,7 @@ def jit_load_model(system_prompt: str | None = None) -> bool:
         "messages": messages,
         "max_tokens": 1,
         "stream": False,
-        "ttl": 300,  # 5 min pour ne pas bloquer mémoire
+        "ttl": 300,  # 5 min to avoid hogging memory
     }
     try:
         requests.post(f"{LM_STUDIO_HOST}/v1/chat/completions", json=payload, timeout=TIMEOUT)
@@ -92,7 +92,7 @@ def jit_load_model(system_prompt: str | None = None) -> bool:
 
 
 def cli_load_model() -> bool:
-    """Tente `lms load MODEL_NAME` via le CLI."""
+    """Try `lms load MODEL_NAME` via the CLI."""
     debug("[INFO] Tentative de chargement via lms CLI…", color="cyan")
     try:
         completed = subprocess.run([
@@ -107,7 +107,7 @@ def cli_load_model() -> bool:
 
 
 def ensure_model_loaded(strategy: str, system_prompt: str | None = None) -> None:
-    """Selon *strategy*, s’assure que le modèle est en mémoire."""
+    """Ensure the model is loaded according to *strategy*."""
     if is_model_loaded():
         return
     if strategy == "off":
