@@ -4,6 +4,8 @@
 copies the answer back to your clipboard. Models are loaded on demand using the
 Just‑in‑Time feature introduced in LM Studio 0.3.6.
 
+This script currently works only on Windows systems.
+
 ## What's new 
 
 - **System prompt** via `-s/--system-prompt` or `-f/--system-prompt-file`.
