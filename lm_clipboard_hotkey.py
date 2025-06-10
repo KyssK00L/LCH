@@ -198,9 +198,13 @@ def handle_hotkey(
     system_prompt: str,
     load_strategy: str,
     auto_paste: bool,
+    auto_copy: bool,
     model_id: str,
     prompt_file: str | None = None,
 ) -> None:
+    if auto_copy:
+        keyboard.press_and_release("ctrl+c")
+        time.sleep(0.1)
     prompt = pyperclip.paste()
     if not prompt.strip():
         debug("[INFO] Clipboard empty.", color="yellow")
@@ -238,6 +242,12 @@ def main() -> None:
         "--auto-paste",
         action="store_true",
         help="Paste the answer with Ctrl+V after copying.",
+    )
+
+    parser.add_argument(
+        "--auto-copy",
+        action="store_true",
+        help="Copy the current selection before sending.",
     )
 
     parser.add_argument(
@@ -290,7 +300,7 @@ def main() -> None:
             keys,
             lambda sp=system_prompt, pf=prompt_file: threading.Thread(
                 target=handle_hotkey,
-                args=(sp, args.load_strategy, args.auto_paste, MODEL_NAME, pf),
+                args=(sp, args.load_strategy, args.auto_paste, args.auto_copy, MODEL_NAME, pf),
                 daemon=True,
             ).start(),
             suppress=True,
