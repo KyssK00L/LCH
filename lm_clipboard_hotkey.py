@@ -203,6 +203,8 @@ def handle_hotkey(
     prompt_file: str | None = None,
 ) -> None:
     if auto_copy:
+        keyboard.release("ctrl")
+        keyboard.release("shift")
         keyboard.press_and_release("ctrl+c")
         time.sleep(0.1)
     prompt = pyperclip.paste()
