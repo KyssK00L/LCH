@@ -10,6 +10,7 @@ import threading
 import time
 from pathlib import Path
 from typing import Final, List
+import ctypes
 
 import keyboard  # Handles keyboard shortcuts
 import pyperclip  # Clipboard
@@ -28,6 +29,12 @@ JIT_TIMEOUT: Final[int] = JIT_LOADING_TIMEOUT
 def debug(msg: str, *, color: str = "") -> None:
     col = getattr(Fore, color.upper(), "")
     print(f"{col}{msg}{Style.RESET_ALL}")
+
+
+def release_left_click() -> None:
+    """Release the left mouse button on Windows."""
+    if os.name == "nt":
+        ctypes.windll.user32.mouse_event(0x0004, 0, 0, 0, 0)
 
 
 def ensure_config() -> None:
@@ -202,6 +209,7 @@ def handle_hotkey(
     model_id: str,
     prompt_file: str | None = None,
 ) -> None:
+    release_left_click()
     if auto_copy:
         keyboard.release("ctrl")
         keyboard.release("shift")
