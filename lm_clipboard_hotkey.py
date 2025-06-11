@@ -37,6 +37,16 @@ def release_left_click() -> None:
         ctypes.windll.user32.mouse_event(0x0004, 0, 0, 0, 0)
 
 
+def warn_linux_privileges() -> None:
+    """Warn about Linux hotkey requirements."""
+    if os.name == "nt":
+        return
+    if not Path("/dev/uinput").exists():
+        debug("[WARN] /dev/uinput missing; hotkeys may fail", color="yellow")
+    if hasattr(os, "geteuid") and os.geteuid() != 0:
+        debug("[WARN] Hotkeys may require root privileges on Linux", color="yellow")
+
+
 def ensure_config() -> None:
     """Create CONFIG_FILE from EXAMPLE_FILE if it doesn't exist."""
     if not CONFIG_FILE.exists() and EXAMPLE_FILE.exists():
@@ -268,6 +278,7 @@ def main() -> None:
     args = parser.parse_args()
 
     ensure_config()
+    warn_linux_privileges()
     config = load_config(CONFIG_FILE)
 
     env_host = os.getenv("LM_STUDIO_HOST")
