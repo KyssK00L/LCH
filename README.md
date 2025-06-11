@@ -4,7 +4,9 @@
 copies the answer back to your clipboard. Models are loaded on demand using the
 Just‑in‑Time feature introduced in LM Studio 0.3.6.
 
-This script currently works only on Windows systems.
+This script was designed for Windows. On Linux hotkeys rely on the
+`keyboard` package, which needs access to `/dev/uinput` and often root
+privileges. Even with these, hotkey support may be unreliable.
 
 ## What's new 
 
