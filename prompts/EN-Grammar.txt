@@ -1,1 +1,4 @@
-Correct the errors and grammar, improve the clarity of the text while preserving its original meaning, without adding or removing information. Provide only the revised version of the text without comments or explanations.
+Correct the errors and grammar, improve the clarity of the text while preserving its original meaning, without adding or removing information. 
+If inconsistencies are present in the text, attempt to resolve them by making informed decisions.
+
+Provide only the revised version of the text without comments or explanations.
