@@ -16,6 +16,7 @@ privileges. Even with these, hotkey support may be unreliable.
 - **Model selection** via `--model-id`.
 - **Auto-paste**: use `--auto-paste` to send Ctrl+V after copying.
 - **Auto-copy**: use `--auto-copy` to copy the selection before sending.
+- **Explain**: sample hotkey to explain the meaning of the clipboard text.
 
 ## Quick start
 
