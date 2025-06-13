@@ -65,6 +65,18 @@ def load_config(path: Path) -> dict:
         debug(f"[ERROR] Loading {path}: {exc}", color="red")
         return {}
 
+
+def read_prompt_file(path_str: str) -> str:
+    """Return the contents of *path_str*.
+
+    If *path_str* is relative, it is resolved against the directory of this
+    script."""
+
+    path = Path(path_str).expanduser()
+    if not path.is_absolute():
+        path = Path(__file__).resolve().parent / path
+    return path.read_text(encoding="utf-8").strip()
+
 # -------------------- Model loading -------------------- #
 
 def is_model_loaded() -> bool:
@@ -324,7 +336,7 @@ def main() -> None:
             debug(f"[ERROR] Hotkey {args.run_hotkey} missing prompt_file", color="red")
             return
         try:
-            system_prompt = Path(prompt_file).expanduser().read_text(encoding="utf-8").strip()
+            system_prompt = read_prompt_file(prompt_file)
         except Exception as exc:
             debug(f"[ERROR] Reading {prompt_file}: {exc}", color="red")
             return
@@ -336,7 +348,7 @@ def main() -> None:
         if not keys or not prompt_file:
             continue
         try:
-            system_prompt = Path(prompt_file).expanduser().read_text(encoding="utf-8").strip()
+            system_prompt = read_prompt_file(prompt_file)
             preview = (system_prompt[:60] + "…") if len(system_prompt) > 60 else system_prompt
             debug(f"[CONFIG] {keys} → {prompt_file} : {preview!r}", color="blue")
         except Exception as exc:
