@@ -7,6 +7,7 @@
         {"keys": "ctrl+shift+2", "prompt_file": "prompts/EN-FR.txt"},
         {"keys": "ctrl+shift+3", "prompt_file": "prompts/FR-Grammar.txt"},
         {"keys": "ctrl+shift+4", "prompt_file": "prompts/FR-EN.txt"},
-        {"keys": "ctrl+shift+5", "prompt_file": "prompts/Explain.txt"}
+        {"keys": "ctrl+shift+5", "prompt_file": "prompts/Explain.txt"},
+        {"keys": "ctrl+shift+6"}
     ]
 }
