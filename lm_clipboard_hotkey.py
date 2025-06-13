@@ -232,7 +232,7 @@ def query_lm(
 # -------------------- Hotkey -------------------- #
 
 def handle_hotkey(
-    system_prompt: str,
+    system_prompt: str | None,
     load_strategy: str,
     auto_paste: bool,
     auto_copy: bool,
@@ -347,28 +347,31 @@ def main() -> None:
             return
         hk = hotkeys[idx]
         prompt_file = hk.get("prompt_file")
-        if not prompt_file:
-            debug(f"[ERROR] Hotkey {args.run_hotkey} missing prompt_file", color="red")
-            return
-        try:
-            system_prompt = read_prompt_file(prompt_file)
-        except Exception as exc:
-            debug(f"[ERROR] Reading {prompt_file}: {exc}", color="red")
-            return
+        system_prompt = None
+        if prompt_file:
+            try:
+                system_prompt = read_prompt_file(prompt_file)
+            except Exception as exc:
+                debug(f"[ERROR] Reading {prompt_file}: {exc}", color="red")
+                return
         handle_hotkey(system_prompt, args.load_strategy, args.auto_paste, args.auto_copy, args.paste_keys, MODEL_NAME, prompt_file)
         return
-    for hk in hotkeys[:5]:
+    for hk in hotkeys[:6]:
         keys = hk.get("keys")
         prompt_file = hk.get("prompt_file")
-        if not keys or not prompt_file:
+        if not keys:
             continue
-        try:
-            system_prompt = read_prompt_file(prompt_file)
-            preview = (system_prompt[:60] + "…") if len(system_prompt) > 60 else system_prompt
-            debug(f"[CONFIG] {keys} → {prompt_file} : {preview!r}", color="blue")
-        except Exception as exc:
-            debug(f"[ERROR] Reading {prompt_file}: {exc}", color="red")
-            continue
+        system_prompt = None
+        if prompt_file:
+            try:
+                system_prompt = read_prompt_file(prompt_file)
+                preview = (system_prompt[:60] + "…") if len(system_prompt) > 60 else system_prompt
+                debug(f"[CONFIG] {keys} → {prompt_file} : {preview!r}", color="blue")
+            except Exception as exc:
+                debug(f"[ERROR] Reading {prompt_file}: {exc}", color="red")
+                continue
+        else:
+            debug(f"[CONFIG] {keys} → clipboard", color="blue")
 
         keyboard.add_hotkey(
             keys,
