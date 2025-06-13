@@ -11,6 +11,7 @@ import time
 from pathlib import Path
 from typing import Final, List
 import ctypes
+import sys
 
 import keyboard  # Handles keyboard shortcuts
 import pyperclip  # Clipboard
@@ -23,6 +24,13 @@ CONFIG_FILE: Final[Path] = Path(__file__).with_name("config.json")
 EXAMPLE_FILE: Final[Path] = Path(__file__).with_name("config.example.json")
 TIMEOUT: Final[int] = 120  # s
 JIT_TIMEOUT: Final[int] = JIT_LOADING_TIMEOUT
+
+if os.name == "nt":
+    DEFAULT_PASTE_KEYS: Final[str] = "ctrl+v"
+elif sys.platform == "darwin":
+    DEFAULT_PASTE_KEYS: Final[str] = "command+v"
+else:
+    DEFAULT_PASTE_KEYS: Final[str] = "ctrl+shift+v"
 
 # -------------------- Utils -------------------- #
 
@@ -228,6 +236,7 @@ def handle_hotkey(
     load_strategy: str,
     auto_paste: bool,
     auto_copy: bool,
+    paste_keys: str,
     model_id: str,
     prompt_file: str | None = None,
 ) -> None:
@@ -254,7 +263,7 @@ def handle_hotkey(
         pyperclip.copy(answer)
         debug("[OK] Answer copied ✔\n", color="green")
         if auto_paste:
-            keyboard.press_and_release("ctrl+v")
+            keyboard.press_and_release(paste_keys)
     else:
         debug("[KO] No answer.\n", color="red")
 
@@ -273,7 +282,13 @@ def main() -> None:
     parser.add_argument(
         "--auto-paste",
         action="store_true",
-        help="Paste the answer with Ctrl+V after copying.",
+        help="Paste the answer using the OS default after copying.",
+    )
+
+    parser.add_argument(
+        "--paste-keys",
+        default=DEFAULT_PASTE_KEYS,
+        help="Key combo to paste when auto-paste is active.",
     )
 
     parser.add_argument(
@@ -340,7 +355,7 @@ def main() -> None:
         except Exception as exc:
             debug(f"[ERROR] Reading {prompt_file}: {exc}", color="red")
             return
-        handle_hotkey(system_prompt, args.load_strategy, args.auto_paste, args.auto_copy, MODEL_NAME, prompt_file)
+        handle_hotkey(system_prompt, args.load_strategy, args.auto_paste, args.auto_copy, args.paste_keys, MODEL_NAME, prompt_file)
         return
     for hk in hotkeys[:5]:
         keys = hk.get("keys")
@@ -359,7 +374,7 @@ def main() -> None:
             keys,
             lambda sp=system_prompt, pf=prompt_file: threading.Thread(
                 target=handle_hotkey,
-                args=(sp, args.load_strategy, args.auto_paste, args.auto_copy, MODEL_NAME, pf),
+                args=(sp, args.load_strategy, args.auto_paste, args.auto_copy, args.paste_keys, MODEL_NAME, pf),
                 daemon=True,
             ).start(),
             suppress=True,
