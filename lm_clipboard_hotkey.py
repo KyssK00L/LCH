@@ -275,6 +275,14 @@ def main() -> None:
         help="Override the model identifier",
     )
 
+    parser.add_argument(
+        "-r",
+        "--run-hotkey",
+        type=int,
+        metavar="N",
+        help="Run hotkey N from config and exit.",
+    )
+
     args = parser.parse_args()
 
     ensure_config()
@@ -303,6 +311,24 @@ def main() -> None:
     hotkeys = config.get("hotkeys") or []
     if not hotkeys:
         debug("[ERROR] No hotkeys defined in config.json", color="red")
+        return
+
+    if args.run_hotkey:
+        idx = args.run_hotkey - 1
+        if idx < 0 or idx >= len(hotkeys):
+            debug(f"[ERROR] Invalid hotkey index {args.run_hotkey}", color="red")
+            return
+        hk = hotkeys[idx]
+        prompt_file = hk.get("prompt_file")
+        if not prompt_file:
+            debug(f"[ERROR] Hotkey {args.run_hotkey} missing prompt_file", color="red")
+            return
+        try:
+            system_prompt = Path(prompt_file).expanduser().read_text(encoding="utf-8").strip()
+        except Exception as exc:
+            debug(f"[ERROR] Reading {prompt_file}: {exc}", color="red")
+            return
+        handle_hotkey(system_prompt, args.load_strategy, args.auto_paste, args.auto_copy, MODEL_NAME, prompt_file)
         return
     for hk in hotkeys[:5]:
         keys = hk.get("keys")
