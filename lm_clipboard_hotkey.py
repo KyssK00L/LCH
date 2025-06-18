@@ -354,7 +354,8 @@ def main() -> None:
             except Exception as exc:
                 debug(f"[ERROR] Reading {prompt_file}: {exc}", color="red")
                 return
-        handle_hotkey(system_prompt, args.load_strategy, args.auto_paste, args.auto_copy, args.paste_keys, MODEL_NAME, prompt_file)
+        hk_model = hk.get("model", MODEL_NAME)
+        handle_hotkey(system_prompt, args.load_strategy, args.auto_paste, args.auto_copy, args.paste_keys, hk_model, prompt_file)
         return
     for hk in hotkeys[:6]:
         keys = hk.get("keys")
@@ -366,18 +367,24 @@ def main() -> None:
             try:
                 system_prompt = read_prompt_file(prompt_file)
                 preview = (system_prompt[:60] + "…") if len(system_prompt) > 60 else system_prompt
-                debug(f"[CONFIG] {keys} → {prompt_file} : {preview!r}", color="blue")
+                desc = f"{keys} → {prompt_file} : {preview!r}"
             except Exception as exc:
                 debug(f"[ERROR] Reading {prompt_file}: {exc}", color="red")
                 continue
         else:
-            debug(f"[CONFIG] {keys} → clipboard", color="blue")
+            desc = f"{keys} → clipboard"
+
+        hk_model = hk.get("model")
+        if hk_model and hk_model != MODEL_NAME:
+            debug(f"[CONFIG] {desc} (model: {hk_model})", color="blue")
+        else:
+            debug(f"[CONFIG] {desc}", color="blue")
 
         keyboard.add_hotkey(
             keys,
-            lambda sp=system_prompt, pf=prompt_file: threading.Thread(
+            lambda sp=system_prompt, pf=prompt_file, m=hk.get("model", MODEL_NAME): threading.Thread(
                 target=handle_hotkey,
-                args=(sp, args.load_strategy, args.auto_paste, args.auto_copy, args.paste_keys, MODEL_NAME, pf),
+                args=(sp, args.load_strategy, args.auto_paste, args.auto_copy, args.paste_keys, m, pf),
                 daemon=True,
             ).start(),
             suppress=True,
